@@ -28,7 +28,7 @@ CREATE PROCEDURE USP_Update_Kaseya_Incident
 	@operatorGroupUNID			UNIQUEIDENTIFIER,	-- incident.operatorgroupid
 	@operatorUNID				UNIQUEIDENTIFIER,	-- incident.operatorid.  This will be the same value as the Operator Group UNID.
 	@operatorGroupDescription	NVARCHAR(109),		-- incident.ref_operatordynanaam
-	@operatorDescription		NVARCHAR(109),		-- incident.ref_operatorgroup
+	@operatorDescription		NVARCHAR(109)		-- incident.ref_operatorgroup
 AS
 BEGIN
 	-- SET NOCOUNT ON added to prevent extra result sets from
@@ -36,6 +36,36 @@ BEGIN
 	SET NOCOUNT ON;
 
     -- Insert statements for procedure here
-	--SELECT <@Param1, sysname, @p1>, <@Param2, sysname, @p2>
+	DECLARE @RC					INT,			-- SPROC return value.  1 successful update.  0 unsuccessful update or error.
+	@errorMessage				NVARCHAR(4000), -- For logging any error. 
+	@errorMessageEmailText		NVARCHAR(MAX),	-- Email text for for sp_send_dbmail.
+	@errorMessageEmailSubject	NVARCHAR(MAX),	-- Email subject for sp_send_dbmail.
+	
+	@incidentTypeName			NVARCHAR(100) = (	SELECT [naam] 
+													FROM [soortmelding] 
+													WHERE [unid] = @incidentTypeUNID)
+	
+	SET XACT_ABORT OFF
+	BEGIN TRY
+		UPDATE [incident]
+		set
+			[impactid]				= @impactUNID,
+			[ref_soortmelding]		= @incidentTypeName,			-- Incident Type description.
+			[soortmeldingid]		= @incidentTypeUNID,			-- The Incident Type is Incident.
+			[vrijelogisch5]			= @kaseyaAutomation,			-- 1 indicates Kaseya automation.  Event and Action will set Status to Responded.
+			[soortbinnenkomstid]	= @entryUNID,					-- Entry i.e. Alert.
+			[operatorgroupid]		= @operatorGroupUNID,			-- Operator Group uniqueidentifier.
+			[operatorid]			= @operatorUNID,				-- Operator ID.  For Kaseay Automation, this will be the same as the Operator Group ID.  i.e. ~RS-2nd.
+			[ref_operatordynanaam]	= @operatorGroupDescription,	-- Operator Group description.
+			[ref_operatorgroup]		= @operatorDescription			-- Operator description.
+		WHERE 
+			[naam] = @strIncidentNumber	
+	END TRY
+
+	BEGIN CATCH
+		SET @RC = 0
+
+	END CATCH
 END
-GO
+
+
