@@ -45,10 +45,10 @@ BEGIN
 													FROM [soortmelding] 
 													WHERE [unid] = @incidentTypeUNID)
 	
-	SET XACT_ABORT OFF
+	SET XACT_ABORT OFF	-- This prevents the calling program (the Trigger in this case) from rolling back it's Transaction.
 	BEGIN TRY
 		UPDATE [incident]
-		set
+		SET
 			[impactid]				= @impactUNID,
 			[ref_soortmelding]		= @incidentTypeName,			-- Incident Type description.
 			[soortmeldingid]		= @incidentTypeUNID,			-- The Incident Type is Incident.
@@ -60,12 +60,20 @@ BEGIN
 			[ref_operatorgroup]		= @operatorDescription			-- Operator description.
 		WHERE 
 			[naam] = @strIncidentNumber	
+
+		SET @RC = 1
 	END TRY
 
 	BEGIN CATCH
 		SET @RC = 0
+		SET @errorMessage = ERROR_MESSAGE()
+		SET @errorMessageEmailText = 'Please see Incident: ' + @strIncidentNumber + '.  The Stored Procedure, ' + OBJECT_NAME(@@PROCID) + ' has failed with below error: ' + 
+		CHAR(10) + CHAR(13) + @errormessage + '.'
+
+		SET @errorMessageEmailSubject = OBJECT_NAME(@@PROCID) + '.' + 'Incident number: ' + @strIncidentNumber
 
 	END CATCH
 END
 
+SELECT OBJECT_NAME(@@PROCID)
 
